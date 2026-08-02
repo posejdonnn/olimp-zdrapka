@@ -529,11 +529,28 @@ async function fetchTrialJackpotPct() {
   return 1.0;
 }
 
+async function fetchTrialRange() {
+  try {
+    const resp = await fetch('/api/settings/prices');
+    const data = await resp.json();
+    if (typeof data.trial_min === 'number' && typeof data.trial_max === 'number') {
+      return { min: data.trial_min, max: data.trial_max };
+    }
+  } catch (e) {
+    // brak polaczenia - uzywamy bezpiecznego zakresu domyslnego ponizej
+  }
+  return { min: 200000, max: 300000 };
+}
+
 async function buildTrialFields() {
-  // wersja darmowa - losowanie lokalne, ale procent jackpota pochodzi z ustawien Wlodarza
+  // wersja darmowa - losowanie lokalne, ale procent jackpota i zakres wygranej
+  // pochodza z ustawien Wlodarza (edytowalne w panelu Discord)
   const jackpotPct = await fetchTrialJackpotPct();
+  const range = await fetchTrialRange();
   const isJackpot = Math.random() * 100 < jackpotPct;
-  const total = isJackpot ? 500000 : 220000;
+  const total = isJackpot
+    ? Math.round(range.max * 2)
+    : Math.round(range.min + Math.random() * (range.max - range.min));
   const amounts = weightedRandomAmounts(total, NUM_FIELDS, 1000);
   const jackpotIdx = isJackpot ? Math.floor(Math.random() * NUM_FIELDS) : null;
   return {
@@ -571,6 +588,15 @@ function selectTier(key) {
     statusLine.className = 'status-line muted';
     statusLine.textContent = 'Wersja darmowa — sprawdź jak to działa, zanim kupisz prawdziwą zdrapkę.';
     statusPill.textContent = 'Tryb darmowy';
+
+    // dogrywamy widelki wygranej asynchronicznie, zeby nie blokowac przelaczenia zakladki
+    fetchTrialRange().then((range) => {
+      if (currentTierKey !== 'trial') return; // uzytkownik juz przelaczyl sie gdzie indziej
+      const minFmt = Math.round(range.min).toLocaleString('pl-PL').replace(/,/g, ' ');
+      const maxFmt = Math.round(range.max).toLocaleString('pl-PL').replace(/,/g, ' ');
+      statusLine.textContent =
+        `Wersja darmowa — wygraj od ${minFmt} do ${maxFmt} LF, bez wydawania grosza.`;
+    });
   } else {
     codeInput.style.display = '';
     unlockBtn.textContent = 'Odblokuj zdrapkę';
