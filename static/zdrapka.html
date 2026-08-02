@@ -463,7 +463,7 @@
         <span class="progress-label" id="progressPct">0%</span>
       </div>
 
-      <button class="reset-btn" id="resetBtn" disabled onclick="finishCard()">Odbierz nagrodę</button>
+      <button class="reset-btn" id="resetBtn" disabled>Zeskrob wszystkie pola...</button>
     </div>
 
     <div class="panel">
@@ -565,6 +565,7 @@ let unlocked = false;
 let currentCode = null;
 let currentCard = null; // { fields, total_lf, is_jackpot }
 let cellsRevealed = [];
+let autoFinishTriggered = false;
 
 function selectTier(key) {
   currentTierKey = key;
@@ -680,6 +681,7 @@ function buildEmptyGrid() {
     grid.appendChild(cell);
   }
   cellsRevealed = new Array(NUM_FIELDS).fill(false);
+  autoFinishTriggered = false;
   document.getElementById('resetBtn').disabled = true;
   updateProgress();
   requestAnimationFrame(setupOverlayCanvas);
@@ -702,6 +704,7 @@ function buildRevealedGrid() {
     grid.appendChild(cell);
   });
   cellsRevealed = new Array(NUM_FIELDS).fill(false);
+  autoFinishTriggered = false;
   document.getElementById('resetBtn').disabled = true;
   updateProgress();
   requestAnimationFrame(setupOverlayCanvas);
@@ -794,8 +797,10 @@ function checkAllCellsProgress() {
   }
   updateProgress();
 
-  if (cellsRevealed.every(Boolean)) {
+  if (cellsRevealed.every(Boolean) && !autoFinishTriggered) {
     ctx.clearRect(0, 0, w, h);
+    autoFinishTriggered = true;
+    finishCard();
   }
 }
 
@@ -835,7 +840,6 @@ function updateProgress() {
   const pct = Math.round((done / NUM_FIELDS) * 100);
   document.getElementById('progressFill').style.width = pct + '%';
   document.getElementById('progressPct').textContent = pct + '%';
-  document.getElementById('resetBtn').disabled = !(unlocked && done === NUM_FIELDS);
 }
 
 // ---------- ZAKOŃCZENIE - ANIMACJA SUMY + WYSYŁKA WYNIKU ----------
@@ -897,7 +901,7 @@ async function finishCard() {
   }
 
   document.getElementById('resultOverlay').classList.add('show');
-  resetBtn.textContent = 'Odbierz nagrodę';
+  resetBtn.textContent = 'Zeskrob wszystkie pola...';
 
   unlocked = false;
   currentCard = null;
