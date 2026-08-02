@@ -93,17 +93,41 @@
   .brand-mini { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: 0.05em; font-size: 13px; color: #fff; text-transform: uppercase; text-shadow: 0 2px 4px rgba(0,0,0,0.4); }
 
   .megabrand {
-    display: flex; align-items: center; justify-content: center; gap: 16px;
-    margin-bottom: 30px; flex-wrap: wrap;
+    display: flex; align-items: center; justify-content: center; gap: 20px;
+    margin-bottom: 34px; flex-wrap: wrap;
   }
-  .megabrand img { width: 52px; height: 52px; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5)); }
+  .megabrand-trident {
+    width: 46px; height: 46px;
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+    animation: tridentGlow 3.2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  .megabrand-trident.right { transform: scaleX(-1); }
+  @keyframes tridentGlow {
+    0%, 100% { filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5)) drop-shadow(0 0 4px rgba(240,185,58,0.3)); transform: rotate(-4deg); }
+    50% { filter: drop-shadow(0 4px 14px rgba(0,0,0,0.5)) drop-shadow(0 0 18px rgba(240,185,58,0.75)); transform: rotate(4deg); }
+  }
+  .megabrand-trident.right { animation-name: tridentGlowRight; }
+  @keyframes tridentGlowRight {
+    0%, 100% { filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5)) drop-shadow(0 0 4px rgba(240,185,58,0.3)); transform: scaleX(-1) rotate(-4deg); }
+    50% { filter: drop-shadow(0 4px 14px rgba(0,0,0,0.5)) drop-shadow(0 0 18px rgba(240,185,58,0.75)); transform: scaleX(-1) rotate(4deg); }
+  }
+
   .megabrand-text {
     font-family: 'Titan One', cursive;
-    font-size: clamp(30px, 5vw, 52px);
-    letter-spacing: 0.02em;
+    font-size: clamp(64px, 14vw, 150px);
+    line-height: 0.95;
+    letter-spacing: 0.01em;
     color: var(--gold-hi);
-    -webkit-text-stroke: 2px var(--gold-bevel);
-    text-shadow: 0 3px 0 var(--gold-deep), 0 5px 0 var(--gold-bevel), 0 8px 14px rgba(0,0,0,0.55);
+    -webkit-text-stroke: 4px var(--gold-bevel);
+    text-shadow:
+      0 4px 0 var(--gold-deep), 0 8px 0 var(--gold-bevel), 0 11px 0 var(--gold-bevel),
+      0 16px 24px rgba(0,0,0,0.6), 0 0 60px rgba(240,185,58,0.55);
+    animation: megaPulse 3.2s ease-in-out infinite;
+  }
+  @keyframes megaPulse {
+    0%, 100% { transform: scale(1); text-shadow: 0 4px 0 var(--gold-deep), 0 8px 0 var(--gold-bevel), 0 11px 0 var(--gold-bevel), 0 16px 24px rgba(0,0,0,0.6), 0 0 60px rgba(240,185,58,0.55); }
+    50% { transform: scale(1.03); text-shadow: 0 4px 0 var(--gold-deep), 0 8px 0 var(--gold-bevel), 0 11px 0 var(--gold-bevel), 0 18px 30px rgba(0,0,0,0.65), 0 0 90px rgba(240,185,58,0.85); }
   }
 
   .discord-link {
@@ -356,9 +380,24 @@
 <div class="wrap">
 
   <div class="megabrand">
-    <img src="https://cdn.discordapp.com/emojis/1533565807856980030.gif" alt="">
+    <svg class="megabrand-trident" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="tridentGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffe38a"/>
+          <stop offset="55%" stop-color="#f0b93a"/>
+          <stop offset="100%" stop-color="#a5710f"/>
+        </linearGradient>
+      </defs>
+      <path d="M32 58 L32 26 M20 14 L20 30 Q20 36 26 36 L26 22 M44 14 L44 30 Q44 36 38 36 L38 22 M20 14 L14 8 M20 14 L26 8 M44 14 L38 8 M44 14 L50 8 M32 26 L26 20 M32 26 L38 20"
+        fill="none" stroke="url(#tridentGrad)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="32" cy="52" r="4" fill="url(#tridentGrad)"/>
+    </svg>
     <div class="megabrand-text">OLIMP SHOP</div>
-    <img src="https://cdn.discordapp.com/emojis/1533565807856980030.gif" alt="">
+    <svg class="megabrand-trident right" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <path d="M32 58 L32 26 M20 14 L20 30 Q20 36 26 36 L26 22 M44 14 L44 30 Q44 36 38 36 L38 22 M20 14 L14 8 M20 14 L26 8 M44 14 L38 8 M44 14 L50 8 M32 26 L26 20 M32 26 L38 20"
+        fill="none" stroke="url(#tridentGrad)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="32" cy="52" r="4" fill="url(#tridentGrad)"/>
+    </svg>
   </div>
 
   <div class="top">
