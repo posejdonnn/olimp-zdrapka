@@ -331,21 +331,38 @@ def redeem_code():
     conn.close()
 
     total_lf_str = f"{row['total_lf']:,}".replace(",", " ")
+    price_label = "20 zł" if row["tier"] == "t20" else "30 zł"
 
     if DISCORD_WEBHOOK_URL:
         mention = f"<@{row['buyer_discord_id']}>" if row["buyer_discord_id"] else "Nieznany gracz"
-        jackpot_note = " 🔱 **TRAFIŁ JACKPOTA!**" if row["is_jackpot"] else ""
+
+        if row["is_jackpot"]:
+            embed = {
+                "title": "🔱 TRAFIONY JACKPOT! 🔱",
+                "description": f"{mention} zdrapał zdrapkę **{price_label}** i trafił jackpota!",
+                "color": 0xFFD700,
+                "fields": [
+                    {"name": "💰 Łączna wygrana", "value": f"**{total_lf_str} LF**", "inline": True},
+                    {"name": "🎫 Poziom", "value": price_label, "inline": True},
+                    {"name": "🔑 Kod", "value": f"`{code}`", "inline": False},
+                ],
+                "footer": {"text": "🍀 Olimp Shop — Skarb Posejdona"},
+            }
+        else:
+            embed = {
+                "title": "🍀 Ktoś wygrał na zdrapce!",
+                "description": f"{mention} zdrapał zdrapkę **{price_label}** i wygrał łącznie.",
+                "color": 0xD4AF37,
+                "fields": [
+                    {"name": "💰 Wygrana", "value": f"**{total_lf_str} LF**", "inline": True},
+                    {"name": "🎫 Poziom", "value": price_label, "inline": True},
+                    {"name": "🔑 Kod", "value": f"`{code}`", "inline": False},
+                ],
+                "footer": {"text": "🍀 Olimp Shop — Skarb Posejdona"},
+            }
+
         try:
-            requests.post(
-                DISCORD_WEBHOOK_URL,
-                json={
-                    "content": (
-                        f"🎉 {mention} zdrapał zdrapkę **{row['tier']}** i wygrał łącznie "
-                        f"**{total_lf_str} LF**!{jackpot_note} (kod: `{code}`)"
-                    )
-                },
-                timeout=5,
-            )
+            requests.post(DISCORD_WEBHOOK_URL, json={"embeds": [embed]}, timeout=5)
         except requests.RequestException:
             pass
 
