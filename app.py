@@ -390,6 +390,36 @@ def redeem_code():
 
 
 # =========================================================
+#  API — STATYSTYKI (zarobki z wygenerowanych kodów)
+# =========================================================
+
+@app.route("/api/stats/earnings", methods=["GET"])
+def get_earnings_endpoint():
+    auth = request.headers.get("Authorization", "")
+    if auth != f"Bearer {BOT_API_KEY}":
+        return jsonify({"error": "unauthorized"}), 401
+
+    conn = sqlite3.connect(DB_PATH)
+    rows = conn.execute("SELECT tier, COUNT(*) FROM codes GROUP BY tier").fetchall()
+    conn.close()
+
+    counts = {"t20": 0, "t30": 0}
+    for tier, cnt in rows:
+        if tier in counts:
+            counts[tier] = cnt
+
+    total = counts["t20"] * TIERS["t20"]["price"] + counts["t30"] * TIERS["t30"]["price"]
+
+    return jsonify(
+        {
+            "total_earnings": total,
+            "count_t20": counts["t20"],
+            "count_t30": counts["t30"],
+        }
+    )
+
+
+# =========================================================
 #  SERWOWANIE STRONY
 # =========================================================
 
