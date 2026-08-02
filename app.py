@@ -21,7 +21,7 @@ TIERS = {
 
 NUM_FIELDS = 9
 DEFAULT_JACKPOT_PCT = {"t20": 1.0, "t30": 1.0, "trial": 1.0}
-DEFAULT_PRICES = {"buy": 60.0, "sell": 111.0}  # zł za 1 000 000 LF
+DEFAULT_PRICES = {"buy": 60.0, "sell": 111.0, "trial_min": 200000.0, "trial_max": 300000.0}
 
 
 # =========================================================
@@ -100,7 +100,7 @@ def set_jackpot_percent(tier, percent):
 def get_price_settings():
     conn = sqlite3.connect(DB_PATH)
     result = {}
-    for key in ("buy", "sell"):
+    for key in ("buy", "sell", "trial_min", "trial_max"):
         row = conn.execute("SELECT value FROM price_settings WHERE key = ?", (key,)).fetchone()
         if row:
             result[key] = row[0]
@@ -277,6 +277,16 @@ def set_prices_endpoint():
             if sell <= 0:
                 return jsonify({"error": "sell must be > 0"}), 400
             set_price_setting("sell", sell)
+        if "trial_min" in data:
+            trial_min = float(data["trial_min"])
+            if trial_min <= 0:
+                return jsonify({"error": "trial_min must be > 0"}), 400
+            set_price_setting("trial_min", trial_min)
+        if "trial_max" in data:
+            trial_max = float(data["trial_max"])
+            if trial_max <= 0:
+                return jsonify({"error": "trial_max must be > 0"}), 400
+            set_price_setting("trial_max", trial_max)
     except (TypeError, ValueError):
         return jsonify({"error": "invalid price value"}), 400
 
