@@ -1,1 +1,1032 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OLIMP SHOP — Zdrapka</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Titan+One&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sky-top: #4fa3d9;
+    --sky-mid: #6fc4e8;
+    --water-mid: #1a8fa8;
+    --water-deep: #0a4a5c;
+    --water-abyss: #052733;
+    --gold-hi: #ffe38a;
+    --gold: #f0b93a;
+    --gold-deep: #a5710f;
+    --gold-bevel: #4a2e05;
+    --stone: #cfc9b8;
+    --teal: #37e0c9;
+    --coral1: #ff6f61;
+    --coral2: #ff9472;
+    --coral3: #e85d75;
+    --kelp1: #1c7a4a;
+    --kelp2: #2fa668;
+    --ink: #f4faf7;
+    --ink-dim: #bcdce3;
+  }
 
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0; padding: 0;
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+    color: var(--ink);
+  }
+
+  body {
+    min-height: 100vh;
+    position: relative;
+    background: linear-gradient(180deg,
+      var(--sky-top) 0%,
+      var(--sky-mid) 14%,
+      var(--water-mid) 40%,
+      var(--water-deep) 72%,
+      var(--water-abyss) 100%);
+  }
+
+  .cloud {
+    position: fixed;
+    top: 0;
+    background: rgba(255,255,255,0.85);
+    box-shadow:
+      24px -6px 0 0 rgba(255,255,255,0.85),
+      -24px 8px 0 0 rgba(255,255,255,0.7),
+      48px 4px 0 0 rgba(255,255,255,0.6);
+    opacity: 0.9;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .cloud1 { width: 60px; height: 22px; top: 40px; left: 8%; }
+  .cloud2 { width: 44px; height: 18px; top: 90px; left: 68%; }
+  .cloud3 { width: 50px; height: 20px; top: 30px; left: 42%; opacity: 0.55; }
+
+  /* ---------- DNO OCEANU: PIASEK ---------- */
+  .seafloor {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 12vh;
+    background: linear-gradient(180deg, rgba(4,26,33,0.4), #041a21 60%);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* ---------- GLONY (KELP) - kołyszące się pasy ---------- */
+  .kelp-row {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 32vh;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-around;
+    padding: 0 2%;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .kelp {
+    width: 14px;
+    border-radius: 40px 40px 4px 4px;
+    background: linear-gradient(180deg, var(--kelp2), var(--kelp1));
+    transform-origin: bottom center;
+    animation: sway 4.5s ease-in-out infinite;
+    opacity: 0.85;
+    box-shadow: 0 0 14px rgba(47,166,104,0.3);
+  }
+  .kelp::before, .kelp::after {
+    content: '';
+    position: absolute;
+    width: 10px;
+    border-radius: 40px 40px 4px 4px;
+    background: inherit;
+    bottom: 0;
+  }
+  .kelp2n { animation-delay: -1.2s; animation-duration: 5.2s; }
+  .kelp3n { animation-delay: -2.4s; animation-duration: 3.8s; }
+  .kelp4n { animation-delay: -0.6s; animation-duration: 4.9s; }
+
+  @keyframes sway {
+    0%, 100% { transform: rotate(-6deg); }
+    50% { transform: rotate(7deg); }
+  }
+
+  /* ---------- KORALOWCE ---------- */
+  .coral-row {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 16vh;
+    pointer-events: none;
+    z-index: 1;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 4%;
+  }
+
+  .coral {
+    position: relative;
+    width: 60px;
+    height: 70px;
+  }
+
+  .coral-branch {
+    position: absolute;
+    bottom: 0;
+    width: 16px;
+    border-radius: 50% 50% 40% 40%;
+    background: linear-gradient(180deg, var(--coral2), var(--coral3));
+    box-shadow: 0 0 16px rgba(255,111,97,0.35);
+  }
+
+  .coral .b1 { left: 4px;  height: 46px; transform: rotate(-14deg); }
+  .coral .b2 { left: 20px; height: 62px; transform: rotate(2deg); }
+  .coral .b3 { left: 36px; height: 40px; transform: rotate(16deg); background: linear-gradient(180deg, var(--coral1), var(--coral3)); }
+
+  .coral-fan {
+    width: 70px;
+    height: 55px;
+    background: radial-gradient(circle at 50% 100%, var(--coral2) 0%, var(--coral3) 55%, transparent 75%);
+    border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+    opacity: 0.8;
+  }
+
+  .anemone {
+    width: 46px;
+    height: 40px;
+    position: relative;
+  }
+  .anemone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 20% 100%, var(--teal) 0 6px, transparent 7px),
+      radial-gradient(circle at 40% 100%, var(--teal) 0 7px, transparent 8px),
+      radial-gradient(circle at 60% 100%, var(--gold-hi) 0 6px, transparent 7px),
+      radial-gradient(circle at 80% 100%, var(--teal) 0 7px, transparent 8px),
+      radial-gradient(circle at 50% 100%, var(--teal) 0 8px, transparent 9px);
+    filter: blur(0.3px);
+    opacity: 0.85;
+  }
+
+  /* drobne bąbelki */
+  .bubble {
+    position: fixed;
+    bottom: -20px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.35);
+    animation: rise linear infinite;
+    pointer-events: none;
+    z-index: 1;
+  }
+  @keyframes rise {
+    0% { transform: translateY(0) translateX(0); opacity: 0; }
+    10% { opacity: 0.7; }
+    100% { transform: translateY(-100vh) translateX(20px); opacity: 0; }
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 3;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 44px 24px 140px;
+  }
+
+  .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 44px;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  .brand-mini {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    font-size: 13px;
+    color: #fff;
+    text-transform: uppercase;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  }
+
+  .status-pill {
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.35);
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: rgba(5,39,51,0.35);
+    backdrop-filter: blur(4px);
+  }
+
+  .hero { text-align: center; margin-bottom: 40px; }
+
+  .hero-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: #fff;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.35);
+    margin-bottom: 20px;
+  }
+
+  .brand-title {
+    font-family: 'Titan One', cursive;
+    font-size: clamp(42px, 8vw, 88px);
+    line-height: 0.95;
+    letter-spacing: 0.01em;
+    color: var(--gold);
+    -webkit-text-stroke: 3px var(--gold-bevel);
+    text-shadow:
+      0 3px 0 var(--gold-deep),
+      0 6px 0 var(--gold-bevel),
+      0 8px 0 var(--gold-bevel),
+      0 12px 18px rgba(0,0,0,0.55),
+      0 0 50px rgba(240,185,58,0.5);
+    margin: 0;
+  }
+
+  .brand-sub {
+    font-family: 'Titan One', cursive;
+    font-size: clamp(24px, 4vw, 40px);
+    color: #fff;
+    -webkit-text-stroke: 2px var(--water-abyss);
+    text-shadow: 0 4px 0 var(--water-abyss), 0 6px 14px rgba(0,0,0,0.4);
+    margin: 4px 0 0;
+  }
+
+  .hero p {
+    color: #fff;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.35);
+    font-size: 15px;
+    max-width: 540px;
+    margin: 22px auto 0;
+    line-height: 1.6;
+    opacity: 0.92;
+  }
+
+  .asset-note {
+    max-width: 640px;
+    margin: 22px auto 0;
+    font-size: 12px;
+    color: #042029;
+    background: rgba(255,255,255,0.85);
+    border: 1px dashed rgba(4,32,41,0.4);
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-weight: 600;
+  }
+
+  .tabs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 38px 0 46px;
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    font-family: 'Titan One', cursive;
+    font-weight: 400;
+    font-size: 13px;
+    letter-spacing: 0.03em;
+    padding: 13px 24px;
+    border-radius: 6px;
+    border: 2px solid rgba(255,255,255,0.4);
+    background: rgba(5,39,51,0.35);
+    color: rgba(255,255,255,0.75);
+    cursor: pointer;
+    transition: all .25s ease;
+    backdrop-filter: blur(4px);
+  }
+
+  .tab:hover { border-color: var(--gold); color: #fff; }
+
+  .tab.active {
+    background: linear-gradient(180deg, var(--gold-hi), var(--gold) 60%, var(--gold-deep));
+    border-color: var(--gold-bevel);
+    color: #3a2405;
+    box-shadow: 0 8px 22px -6px rgba(240,185,58,0.6);
+  }
+
+  .stage {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 40px;
+    align-items: start;
+  }
+
+  @media (max-width: 900px) { .stage { grid-template-columns: 1fr; } }
+
+  .card-zone { display: flex; flex-direction: column; align-items: center; }
+
+  /* ---------- KARTA - MOCNO WYEKSPONOWANA ---------- */
+  .spotlight {
+    position: absolute;
+    width: 640px;
+    height: 640px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,227,138,0.25) 0%, transparent 68%);
+    pointer-events: none;
+    z-index: -1;
+    filter: blur(4px);
+  }
+
+  .scratch-frame-outer {
+    position: relative;
+    animation: floatCard 4.5s ease-in-out infinite;
+  }
+
+  @keyframes floatCard {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-9px); }
+  }
+
+  .scratch-frame {
+    position: relative;
+    width: min(520px, 94vw);
+    padding: 18px;
+    background: linear-gradient(155deg, var(--gold-hi), var(--gold) 40%, var(--gold-deep) 85%, var(--gold-hi));
+    background-size: 250% 250%;
+    border-radius: 20px;
+    box-shadow:
+      0 0 0 3px var(--gold-bevel) inset,
+      0 0 0 7px rgba(255,227,138,0.35),
+      0 45px 90px -20px rgba(0,0,0,0.7),
+      0 0 70px 6px rgba(240,185,58,0.45);
+    animation: shimmer 6s linear infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* rogi - dekoracyjne trójzęby */
+  .corner-deco {
+    position: absolute;
+    font-size: 20px;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+    z-index: 5;
+  }
+  .corner-deco.tl { top: -12px; left: -12px; }
+  .corner-deco.tr { top: -12px; right: -12px; transform: scaleX(-1); }
+  .corner-deco.bl { bottom: -12px; left: -12px; transform: scaleY(-1); }
+  .corner-deco.br { bottom: -12px; right: -12px; transform: scale(-1,-1); }
+
+  .frame-title {
+    text-align: center;
+    font-family: 'Titan One', cursive;
+    font-size: 15px;
+    color: var(--gold-bevel);
+    padding: 6px 0 14px;
+    letter-spacing: 0.02em;
+  }
+
+  .cell-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 11px;
+  }
+
+  .cell {
+    position: relative;
+    aspect-ratio: 1 / 0.85;
+    border-radius: 9px;
+    overflow: hidden;
+    background: var(--water-abyss);
+    box-shadow: 0 0 0 2px rgba(4,32,41,0.4) inset, 0 4px 10px rgba(0,0,0,0.35);
+  }
+
+  .cell-prize {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: linear-gradient(160deg, #0e5468, #052733);
+    padding: 6px;
+  }
+
+  .cell-prize .icon { font-size: 24px; margin-bottom: 4px; }
+  .cell-prize .amt { font-family: 'Titan One', cursive; font-size: 12.5px; color: var(--gold-hi); line-height: 1.15; }
+
+  .cell.winner .cell-prize {
+    background: linear-gradient(160deg, #1d7a5c, #0a4a3a);
+    animation: pulseWin 1.1s ease-in-out infinite;
+  }
+  .cell.winner .cell-prize .amt { color: #fff; }
+  @keyframes pulseWin {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(55,224,201,0.5) inset; }
+    50% { box-shadow: 0 0 0 4px rgba(55,224,201,0.8) inset; }
+  }
+
+  .winner-tag {
+    position: absolute;
+    top: 3px; right: 3px;
+    font-size: 8.5px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    background: var(--teal);
+    color: #052733;
+    padding: 2px 6px;
+    border-radius: 4px;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: all .3s ease;
+    z-index: 4;
+  }
+  .cell.winner.revealed .winner-tag { opacity: 1; transform: scale(1); }
+
+  canvas.cell-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+    touch-action: none;
+    z-index: 3;
+  }
+
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 26px;
+    width: min(520px, 94vw);
+  }
+
+  .progress-track {
+    flex: 1;
+    height: 9px;
+    border-radius: 99px;
+    background: rgba(255,255,255,0.25);
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--teal), var(--gold-hi));
+    transition: width .3s ease;
+  }
+
+  .progress-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    white-space: nowrap;
+  }
+
+  .reset-btn {
+    margin-top: 24px;
+    font-family: 'Titan One', cursive;
+    font-size: 15px;
+    padding: 16px 44px;
+    border-radius: 9px;
+    border: 2px solid var(--gold-bevel);
+    background: linear-gradient(180deg, var(--gold-hi), var(--gold) 55%, var(--gold-deep));
+    color: #241a05;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    box-shadow: 0 12px 30px -10px rgba(240,185,58,0.8);
+    transition: transform .15s ease;
+  }
+  .reset-btn:hover:not(:disabled) { transform: translateY(-2px) scale(1.02); }
+  .reset-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .panel {
+    background: rgba(5,39,51,0.5);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 10px;
+    padding: 26px;
+    backdrop-filter: blur(8px);
+  }
+
+  .panel-label {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 14px;
+    font-weight: 800;
+  }
+
+  .code-input {
+    width: 100%;
+    background: rgba(2,18,24,0.75);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 6px;
+    padding: 15px 16px;
+    color: var(--gold-hi);
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.16em;
+    text-align: center;
+    text-transform: uppercase;
+    outline: none;
+  }
+
+  .code-input:focus { border-color: var(--gold); }
+  .code-input::placeholder { color: var(--ink-dim); letter-spacing: 0.08em; font-weight: 400; }
+
+  .unlock-btn {
+    width: 100%;
+    margin-top: 12px;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 13px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.25);
+    background: rgba(26,143,168,0.3);
+    color: #fff;
+    cursor: pointer;
+  }
+  .unlock-btn:hover { border-color: var(--teal); color: var(--teal); }
+
+  .status-line { margin-top: 14px; font-size: 13px; line-height: 1.5; min-height: 20px; }
+  .status-line.ok { color: var(--teal); }
+  .status-line.err { color: #ffb3b3; }
+  .status-line.muted { color: var(--ink-dim); }
+
+  .divider { height: 1px; background: rgba(255,255,255,0.15); margin: 24px 0; }
+
+  .odds-list { list-style: none; margin: 0; padding: 0; }
+  .odds-list li {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 0; border-bottom: 1px dashed rgba(255,255,255,0.12);
+    font-size: 13px; color: var(--ink-dim);
+  }
+  .odds-list li:last-child { border-bottom: none; }
+  .odds-list li.jackpot .name { color: var(--gold-hi); font-weight: 700; }
+  .odds-list .name { flex: 1; color: #fff; }
+  .odds-list .chance { color: var(--teal); font-variant-numeric: tabular-nums; }
+
+  .price-tag {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--ink-dim);
+  }
+
+  .foot-note {
+    text-align: center; color: #fff; opacity: 0.75; font-size: 12px;
+    margin-top: 56px; line-height: 1.7;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .foot-note b { color: var(--gold-hi); }
+
+  .result-overlay {
+    position: fixed; inset: 0;
+    background: rgba(2,14,18,0.9);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 50; opacity: 0; pointer-events: none;
+    transition: opacity .4s ease;
+  }
+  .result-overlay.show { opacity: 1; pointer-events: all; }
+
+  .result-card {
+    text-align: center; padding: 48px 50px;
+    border: 3px solid var(--gold);
+    border-radius: 14px;
+    background: linear-gradient(180deg, #0e5468, #052733);
+    box-shadow: 0 40px 100px -30px rgba(240,185,58,0.5);
+    max-width: 440px;
+  }
+
+  .result-eyebrow { font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--teal); margin-bottom: 16px; font-weight: 700; }
+  .result-prize { font-family: 'Titan One', cursive; font-size: 28px; color: var(--gold-hi); text-shadow: 0 2px 0 var(--gold-bevel); margin-bottom: 18px; line-height: 1.3; }
+  .result-note { color: var(--ink-dim); font-size: 13px; line-height: 1.6; margin-bottom: 26px; }
+  .result-close {
+    font-weight: 700; font-size: 13px; padding: 12px 28px; border-radius: 6px;
+    border: 1px solid var(--gold); background: transparent; color: var(--gold-hi); cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div class="cloud cloud1"></div>
+<div class="cloud cloud2"></div>
+<div class="cloud cloud3"></div>
+
+<div class="seafloor"></div>
+
+<div class="kelp-row">
+  <div class="kelp" style="height:20vh;"></div>
+  <div class="kelp kelp3n" style="height:14vh;"></div>
+  <div class="kelp kelp2n" style="height:24vh;"></div>
+  <div class="anemone"></div>
+  <div class="kelp kelp4n" style="height:12vh;"></div>
+  <div class="kelp kelp3n" style="height:18vh;"></div>
+  <div class="kelp kelp2n" style="height:22vh;"></div>
+  <div class="anemone"></div>
+  <div class="kelp kelp4n" style="height:15vh;"></div>
+  <div class="kelp kelp3n" style="height:19vh;"></div>
+  <div class="kelp" style="height:13vh;"></div>
+  <div class="kelp kelp2n" style="height:21vh;"></div>
+  <div class="anemone"></div>
+  <div class="kelp kelp4n" style="height:16vh;"></div>
+</div>
+
+<div class="coral-row">
+  <div class="coral"><div class="coral-branch b1"></div><div class="coral-branch b2"></div><div class="coral-branch b3"></div></div>
+  <div class="coral-fan"></div>
+  <div class="anemone"></div>
+  <div class="coral"><div class="coral-branch b1"></div><div class="coral-branch b2"></div><div class="coral-branch b3"></div></div>
+  <div class="coral-fan"></div>
+  <div class="coral"><div class="coral-branch b1"></div><div class="coral-branch b2"></div><div class="coral-branch b3"></div></div>
+  <div class="anemone"></div>
+  <div class="coral-fan"></div>
+  <div class="coral"><div class="coral-branch b1"></div><div class="coral-branch b2"></div><div class="coral-branch b3"></div></div>
+  <div class="coral-fan"></div>
+  <div class="anemone"></div>
+  <div class="coral"><div class="coral-branch b1"></div><div class="coral-branch b2"></div><div class="coral-branch b3"></div></div>
+</div>
+
+<div class="wrap">
+
+  <div class="top">
+    <div class="brand-mini">🔱 Olimp Shop</div>
+    <div class="status-pill" id="statusPill">🔒 Zablokowane — wpisz kod</div>
+  </div>
+
+  <div class="hero">
+    <div class="hero-eyebrow">Prototyp — animacja i mechanika</div>
+    <h1 class="brand-title">OLIMP</h1>
+    <div class="brand-sub">ZDRAPKA</div>
+    <p>Wpisz kod od sprzedawcy, odblokuj kartę i zeskrob pola. Jedno z nich to Twoja prawdziwa wygrana — reszta to pula, do której mogłeś trafić.</p>
+    <div class="asset-note">🖼️ Koralowce, glony i tło są teraz generowane w CSS. Podeślij mi prawdziwe pliki (tło, ramkę karty, trójząb), a podmienię je 1:1.</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" id="tabT1" onclick="selectTier('t20')">Zdrapka 20 zł</button>
+    <button class="tab" id="tabT2" onclick="selectTier('t30')">Zdrapka 30 zł</button>
+    <button class="tab" id="tabT3" onclick="selectTier('trial')">🎁 Zdrapka Próbna</button>
+  </div>
+
+  <div class="stage">
+
+    <div class="card-zone">
+      <div class="scratch-frame-outer">
+        <div class="spotlight"></div>
+        <div class="scratch-frame">
+          <span class="corner-deco tl">🔱</span>
+          <span class="corner-deco tr">🔱</span>
+          <span class="corner-deco bl">🔱</span>
+          <span class="corner-deco br">🔱</span>
+          <div class="frame-title" id="frameTitle">ZESKROB WSZYSTKIE POLA</div>
+          <div class="cell-grid" id="cellGrid"></div>
+        </div>
+      </div>
+
+      <div class="progress-row">
+        <span class="progress-label">Postęp:</span>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <span class="progress-label" id="progressPct">0%</span>
+      </div>
+
+      <button class="reset-btn" id="resetBtn" disabled onclick="finishCard()">Odbierz nagrodę</button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-label" id="codePanelLabel">Twój kod</div>
+      <input type="text" class="code-input" id="codeInput" placeholder="np. 7XK-P29Q" maxlength="12">
+      <button class="unlock-btn" id="unlockBtn" onclick="unlock()">Odblokuj zdrapkę</button>
+      <div class="status-line muted" id="statusLine">Kod otrzymujesz od sprzedawcy po zakupie w tickecie.</div>
+
+      <div class="divider"></div>
+
+      <div class="panel-label" id="oddsLabel">Szanse — Zdrapka 20 zł</div>
+      <ul class="odds-list" id="oddsList"></ul>
+      <div class="price-tag" id="evTag"></div>
+    </div>
+
+  </div>
+
+  <div class="foot-note">To jest <b>prototyp wizualny</b> — kody, losowanie i szanse działają tu tylko lokalnie, w demie.<br>Docelowo kody będzie generował bot na Discordzie, a wynik trafi automatycznie na kanał.</div>
+
+</div>
+
+<div class="result-overlay" id="resultOverlay">
+  <div class="result-card">
+    <div class="result-eyebrow" id="resultEyebrow">Gratulacje, śmiertelniku</div>
+    <div class="result-prize" id="resultPrizeText">—</div>
+    <div class="result-note" id="resultNote">Wynik trafił automatycznie na kanał Discorda — sprzedawca skontaktuje się z Tobą, aby przekazać nagrodę.</div>
+    <button class="result-close" onclick="closeResult()">Zamknij</button>
+  </div>
+</div>
+
+<script>
+const TIERS = {
+  t20: {
+    label: "Zdrapka 20 zł",
+    price: 20,
+    prizes: [
+      { amount: "2 000 LF",   weight: 40,  icon: "🪙", jackpot: false },
+      { amount: "4 000 LF",   weight: 28,  icon: "🪙", jackpot: false },
+      { amount: "7 000 LF",   weight: 18,  icon: "💰", jackpot: false },
+      { amount: "12 000 LF",  weight: 9,   icon: "💰", jackpot: false },
+      { amount: "25 000 LF",  weight: 4.5, icon: "👑", jackpot: false },
+      { amount: "100 000 LF", weight: 0.5, icon: "🔱", jackpot: true  },
+    ]
+  },
+  t30: {
+    label: "Zdrapka 30 zł",
+    price: 30,
+    prizes: [
+      { amount: "3 000 LF",   weight: 35,  icon: "🪙", jackpot: false },
+      { amount: "6 000 LF",   weight: 27,  icon: "🪙", jackpot: false },
+      { amount: "10 000 LF",  weight: 20,  icon: "💰", jackpot: false },
+      { amount: "18 000 LF",  weight: 12,  icon: "💰", jackpot: false },
+      { amount: "35 000 LF",  weight: 5.5, icon: "👑", jackpot: false },
+      { amount: "150 000 LF", weight: 0.5, icon: "🔱", jackpot: true  },
+    ]
+  },
+  trial: {
+    label: "Zdrapka Próbna",
+    price: null,
+    isTrial: true,
+    prizes: [
+      { amount: "5 000 LF",  weight: 30, icon: "🪙", jackpot: false },
+      { amount: "10 000 LF", weight: 25, icon: "🪙", jackpot: false },
+      { amount: "20 000 LF", weight: 20, icon: "💰", jackpot: false },
+      { amount: "40 000 LF", weight: 15, icon: "💰", jackpot: false },
+      { amount: "80 000 LF", weight: 8,  icon: "👑", jackpot: false },
+      { amount: "500 000 LF",weight: 2,  icon: "🔱", jackpot: true  },
+    ]
+  }
+};
+
+const VALUE_PER_1000_LF = 1.0;
+
+function estimateValue(amountStr) {
+  const num = parseInt(amountStr.replace(/[^\d]/g, ''), 10);
+  return (num / 1000) * VALUE_PER_1000_LF;
+}
+
+let currentTierKey = 't20';
+let unlocked = false;
+let winningIndex = null;
+let cellsRevealed = [];
+
+function weightedRandomIndex(prizes) {
+  const total = prizes.reduce((s, p) => s + p.weight, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < prizes.length; i++) {
+    if (r < prizes[i].weight) return i;
+    r -= prizes[i].weight;
+  }
+  return prizes.length - 1;
+}
+
+function renderOdds(tierKey) {
+  const data = TIERS[tierKey];
+  document.getElementById('oddsLabel').textContent = "Możliwe nagrody — " + data.label;
+  document.getElementById('oddsList').innerHTML = data.prizes.map(p => {
+    return `<li class="${p.jackpot ? 'jackpot' : ''}"><span class="name">${p.icon} ${p.amount}${p.jackpot ? ' (JACKPOT)' : ''}</span></li>`;
+  }).join('');
+  document.getElementById('evTag').textContent = '';
+}
+
+function selectTier(key) {
+  currentTierKey = key;
+  document.getElementById('tabT1').classList.toggle('active', key === 't20');
+  document.getElementById('tabT2').classList.toggle('active', key === 't30');
+  document.getElementById('tabT3').classList.toggle('active', key === 'trial');
+
+  const data = TIERS[key];
+  unlocked = false;
+  winningIndex = null;
+
+  const codeInput = document.getElementById('codeInput');
+  codeInput.value = '';
+  const unlockBtn = document.getElementById('unlockBtn');
+  const statusLine = document.getElementById('statusLine');
+  const statusPill = document.getElementById('statusPill');
+  const panelLabel = document.getElementById('codePanelLabel');
+
+  if (data.isTrial) {
+    panelLabel.textContent = 'Wersja próbna';
+    codeInput.style.display = 'none';
+    unlockBtn.textContent = 'Rozpocznij próbę (bez kodu)';
+    statusLine.className = 'status-line muted';
+    statusLine.textContent = 'To wersja demo — możesz spróbować za darmo, bez podawania kodu.';
+    statusPill.textContent = '🎁 Tryb próbny';
+  } else {
+    panelLabel.textContent = 'Twój kod';
+    codeInput.style.display = '';
+    unlockBtn.textContent = 'Odblokuj zdrapkę';
+    statusLine.className = 'status-line muted';
+    statusLine.textContent = 'Kod otrzymujesz od sprzedawcy po zakupie w tickecie.';
+    statusPill.textContent = '🔒 Zablokowane — wpisz kod';
+  }
+
+  renderOdds(key);
+  buildGrid();
+}
+
+function unlock() {
+  const data = TIERS[currentTierKey];
+  const statusLine = document.getElementById('statusLine');
+  const statusPill = document.getElementById('statusPill');
+
+  if (!data.isTrial) {
+    const val = document.getElementById('codeInput').value.trim();
+    if (val.length < 4) {
+      statusLine.className = 'status-line err';
+      statusLine.textContent = 'Kod wygląda na niepoprawny — sprawdź, czy wpisałeś go w całości.';
+      return;
+    }
+    statusLine.className = 'status-line ok';
+    statusLine.textContent = '✅ Kod przyjęty — zdrapka odblokowana. Zeskrob pola.';
+    statusPill.textContent = '🔓 Odblokowane';
+  } else {
+    statusLine.className = 'status-line ok';
+    statusLine.textContent = '✅ Wersja próbna odblokowana. Zeskrob pola.';
+    statusPill.textContent = '🔓 Tryb próbny odblokowany';
+  }
+
+  unlocked = true;
+  winningIndex = weightedRandomIndex(data.prizes);
+  buildGrid();
+}
+
+function buildGrid() {
+  const data = TIERS[currentTierKey];
+  const grid = document.getElementById('cellGrid');
+  grid.innerHTML = '';
+  cellsRevealed = new Array(data.prizes.length).fill(false);
+  document.getElementById('resetBtn').disabled = true;
+  updateProgress();
+
+  data.prizes.forEach((p, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'cell' + (unlocked && i === winningIndex ? ' winner' : '');
+    cell.innerHTML = `
+      <div class="cell-prize">
+        <span class="winner-tag">TWOJA!</span>
+        <div class="icon">${p.icon}</div>
+        <div class="amt">${p.amount}</div>
+      </div>
+      <canvas class="cell-canvas" data-index="${i}"></canvas>
+    `;
+    grid.appendChild(cell);
+  });
+
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.cell-canvas').forEach(setupCellCanvas);
+  });
+}
+
+function setupCellCanvas(canvas) {
+  const idx = parseInt(canvas.dataset.index, 10);
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+  const ctx = canvas.getContext('2d');
+
+  drawStoneSurface(ctx, canvas.width, canvas.height);
+
+  let scratching = false;
+
+  function getPos(e) {
+    const r = canvas.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: cx - r.left, y: cy - r.top };
+  }
+
+  function scratchAt(x, y) {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath();
+    ctx.arc(x, y, 16, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function checkProgress() {
+    if (cellsRevealed[idx]) return;
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    let cleared = 0, total = 0;
+    for (let i = 3; i < data.length; i += 4 * 6) {
+      total++;
+      if (data[i] < 40) cleared++;
+    }
+    if (cleared / total > 0.5) {
+      cellsRevealed[idx] = true;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const cellEl = canvas.closest('.cell');
+      if (unlocked && idx === winningIndex) cellEl.classList.add('revealed');
+      updateProgress();
+    }
+  }
+
+  function start(e) {
+    if (!unlocked || cellsRevealed[idx]) return;
+    scratching = true;
+    const pos = getPos(e);
+    scratchAt(pos.x, pos.y);
+  }
+  function move(e) {
+    if (!scratching) return;
+    e.preventDefault();
+    const pos = getPos(e);
+    scratchAt(pos.x, pos.y);
+    checkProgress();
+  }
+  function end() { scratching = false; }
+
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, { passive: true });
+  canvas.addEventListener('touchmove', move, { passive: false });
+  window.addEventListener('touchend', end);
+}
+
+function drawStoneSurface(ctx, w, h) {
+  const grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, '#cfc9b8');
+  grad.addColorStop(0.5, '#a9a08a');
+  grad.addColorStop(1, '#8a8272');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = 'rgba(0,0,0,0.07)';
+  for (let i = 0; i < 40; i++) {
+    ctx.fillRect(Math.random() * w, Math.random() * h, Math.random() * 3, Math.random() * 3);
+  }
+}
+
+function updateProgress() {
+  const total = cellsRevealed.length;
+  const done = cellsRevealed.filter(Boolean).length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('resetBtn').disabled = !(unlocked && done === total);
+}
+
+function finishCard() {
+  const data = TIERS[currentTierKey];
+  const p = data.prizes[winningIndex];
+
+  if (data.isTrial) {
+    document.getElementById('resultEyebrow').textContent = 'To była wersja próbna!';
+    document.getElementById('resultPrizeText').textContent = `${p.icon} ${p.amount}`;
+    document.getElementById('resultNote').textContent =
+      'Fajnie, co? To były prawdziwe szanse i prawdziwa animacja — tylko nagroda nie jest prawdziwa. ' +
+      'Kup prawdziwą zdrapkę na naszym Discordzie i odbierz nagrodę naprawdę: discord.gg/olimpshop';
+  } else {
+    document.getElementById('resultEyebrow').textContent = 'Gratulacje, śmiertelniku';
+    document.getElementById('resultPrizeText').textContent = `${p.icon} ${p.amount}`;
+    document.getElementById('resultNote').textContent =
+      'Wynik trafił automatycznie na kanał Discorda — sprzedawca skontaktuje się z Tobą, aby przekazać nagrodę.';
+  }
+
+  document.getElementById('resultOverlay').classList.add('show');
+
+  unlocked = false;
+  selectTier(currentTierKey);
+}
+
+function closeResult() {
+  document.getElementById('resultOverlay').classList.remove('show');
+}
+
+function spawnBubbles() {
+  const container = document.body;
+  for (let i = 0; i < 14; i++) {
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    const size = 3 + Math.random() * 6;
+    b.style.width = size + 'px';
+    b.style.height = size + 'px';
+    b.style.left = Math.random() * 100 + 'vw';
+    b.style.animationDuration = (10 + Math.random() * 12) + 's';
+    b.style.animationDelay = (Math.random() * 12) + 's';
+    container.appendChild(b);
+  }
+}
+
+renderOdds('t20');
+buildGrid();
+spawnBubbles();
+window.addEventListener('resize', buildGrid);
+</script>
+
+</body>
+</html>
