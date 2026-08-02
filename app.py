@@ -20,7 +20,7 @@ TIERS = {
 }
 
 NUM_FIELDS = 9
-DEFAULT_JACKPOT_PCT = {"t20": 1.0, "t30": 1.0}
+DEFAULT_JACKPOT_PCT = {"t20": 1.0, "t30": 1.0, "trial": 1.0}
 DEFAULT_PRICES = {"buy": 60.0, "sell": 111.0}  # zł za 1 000 000 LF
 
 
@@ -222,11 +222,14 @@ def generate_code():
     return jsonify({"code": code, "tier": tier, "total_lf": total_lf, "is_jackpot": is_jackpot})
 
 
+VALID_JACKPOT_TIERS = ("t20", "t30", "trial")
+
+
 @app.route("/api/settings/jackpot-chance", methods=["GET"])
 def get_jackpot_chance_endpoint():
     tier = request.args.get("tier")
-    if tier not in TIERS:
-        return jsonify({"error": "invalid tier - use 't20' or 't30'"}), 400
+    if tier not in VALID_JACKPOT_TIERS:
+        return jsonify({"error": "invalid tier - use 't20', 't30' or 'trial'"}), 400
     return jsonify({"tier": tier, "percent": get_jackpot_percent(tier)})
 
 
@@ -238,8 +241,8 @@ def set_jackpot_chance_endpoint():
 
     data = request.get_json(force=True, silent=True) or {}
     tier = data.get("tier")
-    if tier not in TIERS:
-        return jsonify({"error": "invalid tier - use 't20' or 't30'"}), 400
+    if tier not in VALID_JACKPOT_TIERS:
+        return jsonify({"error": "invalid tier - use 't20', 't30' or 'trial'"}), 400
     try:
         percent = float(data.get("percent"))
     except (TypeError, ValueError):
