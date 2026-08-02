@@ -1,3 +1,4 @@
+import json
 import os
 import random
 import string
@@ -13,38 +14,19 @@ DB_PATH = os.environ.get("DB_PATH", "codes.db")
 BOT_API_KEY = os.environ.get("BOT_API_KEY", "zmien-mnie-w-zmiennych-srodowiskowych")
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
 
-# =========================================================
-#  PULA NAGRÓD (ta sama logika co w prototypie na froncie)
-# =========================================================
 TIERS = {
-    "t20": {
-        "price": 20,
-        "prizes": [
-            {"amount": "10 000 LF", "weight": 40, "icon": "🪙", "jackpot": False},
-            {"amount": "20 000 LF", "weight": 28, "icon": "🪙", "jackpot": False},
-            {"amount": "40 000 LF", "weight": 18, "icon": "💰", "jackpot": False},
-            {"amount": "75 000 LF", "weight": 9, "icon": "💰", "jackpot": False},
-            {"amount": "150 000 LF", "weight": 5, "icon": "👑", "jackpot": False},
-            {"amount": "333 000 LF", "weight": 0, "icon": "🔱", "jackpot": True},
-        ],
-    },
-    "t30": {
-        "price": 30,
-        "prizes": [
-            {"amount": "15 000 LF", "weight": 35, "icon": "🪙", "jackpot": False},
-            {"amount": "30 000 LF", "weight": 27, "icon": "🪙", "jackpot": False},
-            {"amount": "60 000 LF", "weight": 20, "icon": "💰", "jackpot": False},
-            {"amount": "110 000 LF", "weight": 12, "icon": "💰", "jackpot": False},
-            {"amount": "220 000 LF", "weight": 6, "icon": "👑", "jackpot": False},
-            {"amount": "500 000 LF", "weight": 0, "icon": "🔱", "jackpot": True},
-        ],
-    },
+    "t20": {"price": 20},
+    "t30": {"price": 30},
 }
 
-# domyślna szansa na jackpot (%) - edytowalna na żywo przez panel na Discordzie,
-# przechowywana w bazie (tabela jackpot_settings), to tylko wartość startowa
+NUM_FIELDS = 9
 DEFAULT_JACKPOT_PCT = {"t20": 1.0, "t30": 1.0}
+DEFAULT_PRICES = {"buy": 60.0, "sell": 111.0}  # zł za 1 000 000 LF
 
+
+# =========================================================
+#  BAZA DANYCH
+# =========================================================
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -53,8 +35,9 @@ def init_db():
         CREATE TABLE IF NOT EXISTS codes (
             code TEXT PRIMARY KEY,
             tier TEXT NOT NULL,
-            prize_index INTEGER NOT NULL,
-            prize_amount TEXT NOT NULL,
+            fields_json TEXT NOT NULL,
+            total_lf INTEGER NOT NULL,
+            is_jackpot INTEGER NOT NULL DEFAULT 0,
             buyer_discord_id TEXT,
             channel_id TEXT,
             created_at REAL NOT NULL,
@@ -71,12 +54,24 @@ def init_db():
         )
         """
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS price_settings (
+            key TEXT PRIMARY KEY,
+            value REAL NOT NULL
+        )
+        """
+    )
     conn.commit()
     conn.close()
 
 
 init_db()
 
+
+# =========================================================
+#  USTAWIENIA (edytowalne przez panel na Discordzie)
+# =========================================================
 
 def get_jackpot_percent(tier):
     conn = sqlite3.connect(DB_PATH)
@@ -102,24 +97,79 @@ def set_jackpot_percent(tier, percent):
     conn.close()
 
 
-def weighted_choice(prizes, jackpot_pct):
-    """Jackpot losowany NIEZALEŻNIE, wg aktualnego (edytowalnego) procentu. Pozostałe nagrody
-    dzielą między siebie resztę szansy, proporcjonalnie do swoich wag - ich wzajemne proporcje
-    się nie zmieniają niezależnie od tego, jaki procent ma teraz jackpot."""
-    jackpot_idx = next((i for i, p in enumerate(prizes) if p["jackpot"]), None)
-    non_jackpot = [(i, p) for i, p in enumerate(prizes) if not p["jackpot"]]
+def get_price_settings():
+    conn = sqlite3.connect(DB_PATH)
+    result = {}
+    for key in ("buy", "sell"):
+        row = conn.execute("SELECT value FROM price_settings WHERE key = ?", (key,)).fetchone()
+        if row:
+            result[key] = row[0]
+        else:
+            default = DEFAULT_PRICES[key]
+            conn.execute("INSERT INTO price_settings (key, value) VALUES (?, ?)", (key, default))
+            result[key] = default
+    conn.commit()
+    conn.close()
+    return result
 
-    if jackpot_idx is not None and random.uniform(0, 100) < jackpot_pct:
-        return jackpot_idx
 
-    total_weight = sum(p["weight"] for _, p in non_jackpot)
-    r = random.uniform(0, total_weight)
-    upto = 0
-    for i, p in non_jackpot:
-        upto += p["weight"]
-        if upto >= r:
-            return i
-    return non_jackpot[-1][0]
+def set_price_setting(key, value):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute(
+        """INSERT INTO price_settings (key, value) VALUES (?, ?)
+           ON CONFLICT(key) DO UPDATE SET value = excluded.value""",
+        (key, value),
+    )
+    conn.commit()
+    conn.close()
+
+
+# =========================================================
+#  GENEROWANIE 9 PÓL - ZAWSZE SUMUJĄ SIĘ DO ZAŁOŻONEJ WARTOŚCI
+# =========================================================
+
+def generate_prize_fields(total_lf: int, num_fields: int = NUM_FIELDS, min_field: int = 1000):
+    """Dzieli total_lf na num_fields różnych, atrakcyjnie wyglądających kwot (zaokrąglonych
+    do pełnych 500 LF), które ZAWSZE sumują się dokładnie do total_lf - co do jednostki."""
+    reserve = min_field * num_fields
+    remaining = max(total_lf - reserve, 0)
+
+    weights = [random.uniform(0.4, 2.4) for _ in range(num_fields)]
+    weight_sum = sum(weights)
+
+    raw_amounts = [min_field + remaining * (w / weight_sum) for w in weights]
+    amounts = [max(min_field, int(round(a / 500)) * 500) for a in raw_amounts]
+
+    diff = total_lf - sum(amounts)
+    idx_max = amounts.index(max(amounts))
+    amounts[idx_max] += diff
+
+    return amounts
+
+
+def build_scratch_card(tier: str):
+    """Losuje czy to jackpot (wg aktualnego, edytowalnego %), liczy docelową sumę na
+    podstawie AKTUALNYCH cen skupu/sprzedaży, i generuje 9 pól sumujących się do niej."""
+    prices = get_price_settings()
+    price = TIERS[tier]["price"]
+    jackpot_pct = get_jackpot_percent(tier)
+
+    is_jackpot = random.uniform(0, 100) < jackpot_pct
+
+    if is_jackpot:
+        total_lf = round(price * 1_000_000 / prices["buy"])
+    else:
+        total_lf = round(price * 1_000_000 / prices["sell"])
+
+    amounts = generate_prize_fields(total_lf, NUM_FIELDS)
+
+    jackpot_field_index = random.randrange(NUM_FIELDS) if is_jackpot else None
+    fields = [
+        {"amount": amt, "is_jackpot": (i == jackpot_field_index)}
+        for i, amt in enumerate(amounts)
+    ]
+
+    return fields, is_jackpot, total_lf
 
 
 def generate_code_string():
@@ -142,12 +192,8 @@ def generate_code():
     if tier not in TIERS:
         return jsonify({"error": "invalid tier - use 't20' or 't30'"}), 400
 
-    prizes = TIERS[tier]["prizes"]
-    jackpot_pct = get_jackpot_percent(tier)
-    prize_index = weighted_choice(prizes, jackpot_pct)
-    prize = prizes[prize_index]
+    fields, is_jackpot, total_lf = build_scratch_card(tier)
 
-    # unikamy (bardzo mało prawdopodobnej) kolizji kodów
     conn = sqlite3.connect(DB_PATH)
     while True:
         code = generate_code_string()
@@ -157,13 +203,14 @@ def generate_code():
 
     conn.execute(
         """INSERT INTO codes
-           (code, tier, prize_index, prize_amount, buyer_discord_id, channel_id, created_at, used)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 0)""",
+           (code, tier, fields_json, total_lf, is_jackpot, buyer_discord_id, channel_id, created_at, used)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)""",
         (
             code,
             tier,
-            prize_index,
-            prize["amount"],
+            json.dumps(fields),
+            total_lf,
+            int(is_jackpot),
             data.get("buyer_discord_id"),
             data.get("channel_id"),
             time.time(),
@@ -172,7 +219,7 @@ def generate_code():
     conn.commit()
     conn.close()
 
-    return jsonify({"code": code, "tier": tier})
+    return jsonify({"code": code, "tier": tier, "total_lf": total_lf, "is_jackpot": is_jackpot})
 
 
 @app.route("/api/settings/jackpot-chance", methods=["GET"])
@@ -180,8 +227,7 @@ def get_jackpot_chance_endpoint():
     tier = request.args.get("tier")
     if tier not in TIERS:
         return jsonify({"error": "invalid tier - use 't20' or 't30'"}), 400
-    percent = get_jackpot_percent(tier)
-    return jsonify({"tier": tier, "percent": percent})
+    return jsonify({"tier": tier, "percent": get_jackpot_percent(tier)})
 
 
 @app.route("/api/settings/jackpot-chance", methods=["POST"])
@@ -194,7 +240,6 @@ def set_jackpot_chance_endpoint():
     tier = data.get("tier")
     if tier not in TIERS:
         return jsonify({"error": "invalid tier - use 't20' or 't30'"}), 400
-
     try:
         percent = float(data.get("percent"))
     except (TypeError, ValueError):
@@ -204,6 +249,35 @@ def set_jackpot_chance_endpoint():
 
     set_jackpot_percent(tier, percent)
     return jsonify({"success": True, "tier": tier, "percent": percent})
+
+
+@app.route("/api/settings/prices", methods=["GET"])
+def get_prices_endpoint():
+    return jsonify(get_price_settings())
+
+
+@app.route("/api/settings/prices", methods=["POST"])
+def set_prices_endpoint():
+    auth = request.headers.get("Authorization", "")
+    if auth != f"Bearer {BOT_API_KEY}":
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        if "buy" in data:
+            buy = float(data["buy"])
+            if buy <= 0:
+                return jsonify({"error": "buy must be > 0"}), 400
+            set_price_setting("buy", buy)
+        if "sell" in data:
+            sell = float(data["sell"])
+            if sell <= 0:
+                return jsonify({"error": "sell must be > 0"}), 400
+            set_price_setting("sell", sell)
+    except (TypeError, ValueError):
+        return jsonify({"error": "invalid price value"}), 400
+
+    return jsonify({"success": True, **get_price_settings()})
 
 
 # =========================================================
@@ -229,8 +303,9 @@ def validate_code():
         {
             "valid": True,
             "tier": row["tier"],
-            "prize_index": row["prize_index"],
-            "prize_amount": row["prize_amount"],
+            "fields": json.loads(row["fields_json"]),
+            "total_lf": row["total_lf"],
+            "is_jackpot": bool(row["is_jackpot"]),
         }
     )
 
@@ -255,14 +330,18 @@ def redeem_code():
     conn.commit()
     conn.close()
 
+    total_lf_str = f"{row['total_lf']:,}".replace(",", " ")
+
     if DISCORD_WEBHOOK_URL:
+        mention = f"<@{row['buyer_discord_id']}>" if row["buyer_discord_id"] else "Nieznany gracz"
+        jackpot_note = " 🔱 **TRAFIŁ JACKPOTA!**" if row["is_jackpot"] else ""
         try:
             requests.post(
                 DISCORD_WEBHOOK_URL,
                 json={
                     "content": (
-                        f"🎉 Ktoś zdrapał zdrapkę **{row['tier']}** i wygrał: "
-                        f"**{row['prize_amount']}**! (kod: `{code}`)"
+                        f"🎉 {mention} zdrapał zdrapkę **{row['tier']}** i wygrał łącznie "
+                        f"**{total_lf_str} LF**!{jackpot_note} (kod: `{code}`)"
                     )
                 },
                 timeout=5,
@@ -270,7 +349,14 @@ def redeem_code():
         except requests.RequestException:
             pass
 
-    return jsonify({"success": True, "prize_amount": row["prize_amount"]})
+    return jsonify(
+        {
+            "success": True,
+            "fields": json.loads(row["fields_json"]),
+            "total_lf": row["total_lf"],
+            "is_jackpot": bool(row["is_jackpot"]),
+        }
+    )
 
 
 # =========================================================
