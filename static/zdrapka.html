@@ -737,24 +737,24 @@ const TIERS = {
     label: "Zdrapka 20 zł",
     price: 20,
     prizes: [
-      { amount: "2 000 LF",   weight: 40,  icon: "🪙", jackpot: false },
-      { amount: "4 000 LF",   weight: 28,  icon: "🪙", jackpot: false },
-      { amount: "7 000 LF",   weight: 18,  icon: "💰", jackpot: false },
-      { amount: "12 000 LF",  weight: 9,   icon: "💰", jackpot: false },
-      { amount: "25 000 LF",  weight: 4.5, icon: "👑", jackpot: false },
-      { amount: "100 000 LF", weight: 0.5, icon: "🔱", jackpot: true  },
+      { amount: "10 000 LF",    weight: 40,  icon: "🪙", jackpot: false },
+      { amount: "20 000 LF",    weight: 28,  icon: "🪙", jackpot: false },
+      { amount: "40 000 LF",    weight: 18,  icon: "💰", jackpot: false },
+      { amount: "75 000 LF",    weight: 9,   icon: "💰", jackpot: false },
+      { amount: "150 000 LF",   weight: 4.5, icon: "👑", jackpot: false },
+      { amount: "1 000 000 LF", weight: 0.5, icon: "🔱", jackpot: true  },
     ]
   },
   t30: {
     label: "Zdrapka 30 zł",
     price: 30,
     prizes: [
-      { amount: "3 000 LF",   weight: 35,  icon: "🪙", jackpot: false },
-      { amount: "6 000 LF",   weight: 27,  icon: "🪙", jackpot: false },
-      { amount: "10 000 LF",  weight: 20,  icon: "💰", jackpot: false },
-      { amount: "18 000 LF",  weight: 12,  icon: "💰", jackpot: false },
-      { amount: "35 000 LF",  weight: 5.5, icon: "👑", jackpot: false },
-      { amount: "150 000 LF", weight: 0.5, icon: "🔱", jackpot: true  },
+      { amount: "15 000 LF",    weight: 35,  icon: "🪙", jackpot: false },
+      { amount: "30 000 LF",    weight: 27,  icon: "🪙", jackpot: false },
+      { amount: "60 000 LF",    weight: 20,  icon: "💰", jackpot: false },
+      { amount: "110 000 LF",   weight: 12,  icon: "💰", jackpot: false },
+      { amount: "220 000 LF",   weight: 5.5, icon: "👑", jackpot: false },
+      { amount: "1 500 000 LF", weight: 0.5, icon: "🔱", jackpot: true  },
     ]
   },
   trial: {
@@ -762,12 +762,12 @@ const TIERS = {
     price: null,
     isTrial: true,
     prizes: [
-      { amount: "5 000 LF",  weight: 30, icon: "🪙", jackpot: false },
-      { amount: "10 000 LF", weight: 25, icon: "🪙", jackpot: false },
-      { amount: "20 000 LF", weight: 20, icon: "💰", jackpot: false },
-      { amount: "40 000 LF", weight: 15, icon: "💰", jackpot: false },
-      { amount: "80 000 LF", weight: 8,  icon: "👑", jackpot: false },
-      { amount: "500 000 LF",weight: 2,  icon: "🔱", jackpot: true  },
+      { amount: "20 000 LF",    weight: 30, icon: "🪙", jackpot: false },
+      { amount: "40 000 LF",    weight: 25, icon: "🪙", jackpot: false },
+      { amount: "80 000 LF",    weight: 20, icon: "💰", jackpot: false },
+      { amount: "150 000 LF",   weight: 15, icon: "💰", jackpot: false },
+      { amount: "400 000 LF",   weight: 8,  icon: "👑", jackpot: false },
+      { amount: "2 000 000 LF", weight: 2,  icon: "🔱", jackpot: true  },
     ]
   }
 };
@@ -840,7 +840,9 @@ function selectTier(key) {
   buildGrid();
 }
 
-function unlock() {
+let currentCode = null;
+
+async function unlock() {
   const data = TIERS[currentTierKey];
   const statusLine = document.getElementById('statusLine');
   const statusPill = document.getElementById('statusPill');
@@ -852,17 +854,55 @@ function unlock() {
       statusLine.textContent = 'Kod wygląda na niepoprawny — sprawdź, czy wpisałeś go w całości.';
       return;
     }
+
+    statusLine.className = 'status-line muted';
+    statusLine.textContent = '⏳ Sprawdzam kod...';
+
+    let result;
+    try {
+      const resp = await fetch('/api/validate-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: val }),
+      });
+      result = await resp.json();
+    } catch (e) {
+      statusLine.className = 'status-line err';
+      statusLine.textContent = '❌ Nie udało się połączyć z serwerem. Spróbuj ponownie za chwilę.';
+      return;
+    }
+
+    if (!result.valid) {
+      statusLine.className = 'status-line err';
+      if (result.reason === 'already_used') {
+        statusLine.textContent = '❌ Ten kod został już wykorzystany.';
+      } else {
+        statusLine.textContent = '❌ Nieprawidłowy kod — sprawdź czy wpisałeś go poprawnie.';
+      }
+      return;
+    }
+
+    // kod jest wazny TYLKO dla tego poziomu, na ktory zostal wygenerowany - przelaczamy widok
+    if (result.tier !== currentTierKey) {
+      selectTier(result.tier);
+    }
+
+    currentCode = val;
+    winningIndex = result.prize_index;
+    unlocked = true;
+
     statusLine.className = 'status-line ok';
     statusLine.textContent = '✅ Kod przyjęty — zdrapka odblokowana. Zeskrob pola.';
     statusPill.textContent = '🔓 Odblokowane';
   } else {
+    currentCode = null;
+    unlocked = true;
+    winningIndex = weightedRandomIndex(data.prizes);
     statusLine.className = 'status-line ok';
     statusLine.textContent = '✅ Wersja próbna odblokowana. Zeskrob pola.';
     statusPill.textContent = '🔓 Tryb próbny odblokowany';
   }
 
-  unlocked = true;
-  winningIndex = weightedRandomIndex(data.prizes);
   buildGrid();
 }
 
@@ -980,7 +1020,7 @@ function updateProgress() {
   document.getElementById('resetBtn').disabled = !(unlocked && done === total);
 }
 
-function finishCard() {
+async function finishCard() {
   const data = TIERS[currentTierKey];
   const p = data.prizes[winningIndex];
 
@@ -990,14 +1030,41 @@ function finishCard() {
     document.getElementById('resultNote').textContent =
       'Fajnie, co? To były prawdziwe szanse i prawdziwa animacja — tylko nagroda nie jest prawdziwa. ' +
       'Kup prawdziwą zdrapkę na naszym Discordzie i odbierz nagrodę naprawdę: discord.gg/olimpshop';
+    document.getElementById('resultOverlay').classList.add('show');
   } else {
-    document.getElementById('resultEyebrow').textContent = 'Gratulacje, śmiertelniku';
-    document.getElementById('resultPrizeText').textContent = `${p.icon} ${p.amount}`;
-    document.getElementById('resultNote').textContent =
-      'Wynik trafił automatycznie na kanał Discorda — sprzedawca skontaktuje się z Tobą, aby przekazać nagrodę.';
-  }
+    document.getElementById('resetBtn').disabled = true;
+    document.getElementById('resetBtn').textContent = 'Wysyłanie wyniku...';
 
-  document.getElementById('resultOverlay').classList.add('show');
+    try {
+      const resp = await fetch('/api/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: currentCode }),
+      });
+      const result = await resp.json();
+
+      if (!result.success) {
+        document.getElementById('resultEyebrow').textContent = 'Coś poszło nie tak';
+        document.getElementById('resultPrizeText').textContent = '⚠️ Błąd';
+        document.getElementById('resultNote').textContent =
+          'Nie udało się potwierdzić wygranej po stronie serwera — napisz do sprzedawcy na Discordzie, ' +
+          'podając swój kod, żeby ręcznie zweryfikować wynik.';
+      } else {
+        document.getElementById('resultEyebrow').textContent = 'Gratulacje, śmiertelniku';
+        document.getElementById('resultPrizeText').textContent = `${p.icon} ${result.prize_amount}`;
+        document.getElementById('resultNote').textContent =
+          'Wynik trafił automatycznie na kanał Discorda — sprzedawca skontaktuje się z Tobą, aby przekazać nagrodę.';
+      }
+    } catch (e) {
+      document.getElementById('resultEyebrow').textContent = 'Brak połączenia';
+      document.getElementById('resultPrizeText').textContent = '⚠️ Błąd sieci';
+      document.getElementById('resultNote').textContent =
+        'Nie udało się połączyć z serwerem. Napisz do sprzedawcy na Discordzie, podając swój kod.';
+    }
+
+    document.getElementById('resultOverlay').classList.add('show');
+    document.getElementById('resetBtn').textContent = 'Odbierz nagrodę';
+  }
 
   unlocked = false;
   selectTier(currentTierKey);
