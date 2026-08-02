@@ -24,8 +24,8 @@ TIERS = {
             {"amount": "20 000 LF", "weight": 28, "icon": "🪙", "jackpot": False},
             {"amount": "40 000 LF", "weight": 18, "icon": "💰", "jackpot": False},
             {"amount": "75 000 LF", "weight": 9, "icon": "💰", "jackpot": False},
-            {"amount": "150 000 LF", "weight": 4.5, "icon": "👑", "jackpot": False},
-            {"amount": "1 000 000 LF", "weight": 0.5, "icon": "🔱", "jackpot": True},
+            {"amount": "150 000 LF", "weight": 5, "icon": "👑", "jackpot": False},
+            {"amount": "333 000 LF", "weight": 0, "icon": "🔱", "jackpot": True},
         ],
     },
     "t30": {
@@ -35,11 +35,15 @@ TIERS = {
             {"amount": "30 000 LF", "weight": 27, "icon": "🪙", "jackpot": False},
             {"amount": "60 000 LF", "weight": 20, "icon": "💰", "jackpot": False},
             {"amount": "110 000 LF", "weight": 12, "icon": "💰", "jackpot": False},
-            {"amount": "220 000 LF", "weight": 5.5, "icon": "👑", "jackpot": False},
-            {"amount": "1 500 000 LF", "weight": 0.5, "icon": "🔱", "jackpot": True},
+            {"amount": "220 000 LF", "weight": 6, "icon": "👑", "jackpot": False},
+            {"amount": "500 000 LF", "weight": 0, "icon": "🔱", "jackpot": True},
         ],
     },
 }
+
+# domyślna szansa na jackpot (%) - edytowalna na żywo przez panel na Discordzie,
+# przechowywana w bazie (tabela jackpot_settings), to tylko wartość startowa
+DEFAULT_JACKPOT_PCT = {"t20": 1.0, "t30": 1.0}
 
 
 def init_db():
@@ -59,6 +63,14 @@ def init_db():
         )
         """
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS jackpot_settings (
+            tier TEXT PRIMARY KEY,
+            percent REAL NOT NULL
+        )
+        """
+    )
     conn.commit()
     conn.close()
 
@@ -66,15 +78,48 @@ def init_db():
 init_db()
 
 
-def weighted_choice(prizes):
-    total = sum(p["weight"] for p in prizes)
-    r = random.uniform(0, total)
+def get_jackpot_percent(tier):
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute("SELECT percent FROM jackpot_settings WHERE tier = ?", (tier,)).fetchone()
+    if row:
+        conn.close()
+        return row[0]
+    default = DEFAULT_JACKPOT_PCT.get(tier, 1.0)
+    conn.execute("INSERT INTO jackpot_settings (tier, percent) VALUES (?, ?)", (tier, default))
+    conn.commit()
+    conn.close()
+    return default
+
+
+def set_jackpot_percent(tier, percent):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute(
+        """INSERT INTO jackpot_settings (tier, percent) VALUES (?, ?)
+           ON CONFLICT(tier) DO UPDATE SET percent = excluded.percent""",
+        (tier, percent),
+    )
+    conn.commit()
+    conn.close()
+
+
+def weighted_choice(prizes, jackpot_pct):
+    """Jackpot losowany NIEZALEŻNIE, wg aktualnego (edytowalnego) procentu. Pozostałe nagrody
+    dzielą między siebie resztę szansy, proporcjonalnie do swoich wag - ich wzajemne proporcje
+    się nie zmieniają niezależnie od tego, jaki procent ma teraz jackpot."""
+    jackpot_idx = next((i for i, p in enumerate(prizes) if p["jackpot"]), None)
+    non_jackpot = [(i, p) for i, p in enumerate(prizes) if not p["jackpot"]]
+
+    if jackpot_idx is not None and random.uniform(0, 100) < jackpot_pct:
+        return jackpot_idx
+
+    total_weight = sum(p["weight"] for _, p in non_jackpot)
+    r = random.uniform(0, total_weight)
     upto = 0
-    for i, p in enumerate(prizes):
+    for i, p in non_jackpot:
         upto += p["weight"]
         if upto >= r:
             return i
-    return len(prizes) - 1
+    return non_jackpot[-1][0]
 
 
 def generate_code_string():
@@ -98,7 +143,8 @@ def generate_code():
         return jsonify({"error": "invalid tier - use 't20' or 't30'"}), 400
 
     prizes = TIERS[tier]["prizes"]
-    prize_index = weighted_choice(prizes)
+    jackpot_pct = get_jackpot_percent(tier)
+    prize_index = weighted_choice(prizes, jackpot_pct)
     prize = prizes[prize_index]
 
     # unikamy (bardzo mało prawdopodobnej) kolizji kodów
@@ -127,6 +173,37 @@ def generate_code():
     conn.close()
 
     return jsonify({"code": code, "tier": tier})
+
+
+@app.route("/api/settings/jackpot-chance", methods=["GET"])
+def get_jackpot_chance_endpoint():
+    tier = request.args.get("tier")
+    if tier not in TIERS:
+        return jsonify({"error": "invalid tier - use 't20' or 't30'"}), 400
+    percent = get_jackpot_percent(tier)
+    return jsonify({"tier": tier, "percent": percent})
+
+
+@app.route("/api/settings/jackpot-chance", methods=["POST"])
+def set_jackpot_chance_endpoint():
+    auth = request.headers.get("Authorization", "")
+    if auth != f"Bearer {BOT_API_KEY}":
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.get_json(force=True, silent=True) or {}
+    tier = data.get("tier")
+    if tier not in TIERS:
+        return jsonify({"error": "invalid tier - use 't20' or 't30'"}), 400
+
+    try:
+        percent = float(data.get("percent"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "invalid percent"}), 400
+    if not (0 <= percent <= 100):
+        return jsonify({"error": "percent must be between 0 and 100"}), 400
+
+    set_jackpot_percent(tier, percent)
+    return jsonify({"success": True, "tier": tier, "percent": percent})
 
 
 # =========================================================
