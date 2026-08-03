@@ -161,17 +161,22 @@ def generate_prize_fields(total_lf: int, num_fields: int = NUM_FIELDS, min_field
 
 def build_scratch_card(tier: str):
     """Losuje czy to jackpot (wg aktualnego, edytowalnego %), liczy docelową sumę na
-    podstawie AKTUALNYCH cen skupu/sprzedaży, i generuje 9 pól sumujących się do niej."""
+    podstawie AKTUALNYCH cen skupu/sprzedaży, i generuje 9 pól sumujących się do niej.
+    Nie-jackpotowa suma dostaje drobny kosmetyczny szum (żeby nie była identyczna za
+    każdym razem) - dokładnie ta sama logika co w skrzyni skarbów."""
     prices = get_price_settings()
     price = TIERS[tier]["price"]
     jackpot_pct = get_jackpot_percent(tier)
 
     is_jackpot = random.uniform(0, 100) < jackpot_pct
+    jackpot_lf = round(price * 1_000_000 / prices["buy"])
 
     if is_jackpot:
-        total_lf = round(price * 1_000_000 / prices["buy"])
+        total_lf = jackpot_lf
     else:
-        total_lf = round(price * 1_000_000 / prices["sell"])
+        base_lf = round(price * 1_000_000 / prices["sell"])
+        jitter = random.randint(0, 5000)
+        total_lf = min(base_lf + jitter, jackpot_lf - 500)  # NIGDY nie dotyka/przekracza jackpota
 
     amounts = generate_prize_fields(total_lf, NUM_FIELDS)
 
