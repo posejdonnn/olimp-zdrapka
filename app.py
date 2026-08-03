@@ -185,12 +185,12 @@ def build_scratch_card(tier: str):
 
 
 def build_chest_prize(tier: str):
-    """Skrzynia = JEDNO losowanie (nie suma pól jak w zdrapce). Każda możliwa wygrana,
-    nawet najmniejsza, jest >= gwarantowanemu minimum (cena / kurs SPRZEDAŻY) - dokładnie
-    tyle, ile klient dostałby kupując tę samą kwotę normalnie na tickecie. Jackpot (rzadki,
-    edytowalny %) = cena / kurs SKUPU, czyli zero zysku dla sklepu. Rozkład mocno skoszony
-    w stronę minimum (większość wygranych blisko dolnej granicy), z długim, coraz rzadszym
-    ogonem w stronę jackpota - żadna zwykła wygrana nigdy go nie dotyka ani nie przekracza."""
+    """Skrzynia = JEDNO losowanie (nie suma pól jak w zdrapce). Zwykła (nie-jackpotowa)
+    wygrana jest zawsze BLISKO gwarantowanego minimum (cena / kurs SPRZEDAŻY) - dokładnie
+    tyle, ile klient dostałby kupując tę samą kwotę normalnie na tickecie, plus drobny
+    kosmetyczny szum (żeby liczba nie była identyczna za każdym razem). Jackpot (rzadki,
+    edytowalny %) = cena / kurs SKUPU, czyli zero zysku dla sklepu - to JEDYNY sposób na
+    dużo wyższą wygraną. Dokładnie ta sama logika co w zdrapce."""
     prices = get_price_settings()
     price = CHEST_TIERS[tier]["price"]
     jackpot_pct = get_jackpot_percent(tier)
@@ -202,9 +202,9 @@ def build_chest_prize(tier: str):
     if is_jackpot:
         return max_lf, True
 
-    frac = random.random() ** 4.5  # mocne skoszenie w strone 0 (czyli w strone minimum)
-    lf = min_lf + (max_lf - min_lf) * frac
-    lf = min(int(lf), max_lf - 500)  # NIGDY nie dotyka/przekracza jackpota
+    jitter = random.randint(0, 3000)  # kosmetyczny szum - zeby nie bylo identycznej liczby za kazdym razem
+    lf = min_lf + jitter
+    lf = min(lf, max_lf - 500)  # NIGDY nie dotyka/przekracza jackpota
     lf = max(lf, min_lf)
     return lf, False
 
