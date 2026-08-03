@@ -867,6 +867,12 @@ async function unlock() {
     return;
   }
 
+  if (!['t20', 't30'].includes(result.tier)) {
+    statusLine.className = 'status-line err';
+    statusLine.textContent = 'Ten kod jest do Skrzyni Skarbów, nie do zdrapki — przełącz się na zakładkę „🎁 Skrzynia Skarbów” u góry strony.';
+    return;
+  }
+
   if (result.tier !== currentTierKey) {
     selectTier(result.tier);
   }
@@ -1346,6 +1352,12 @@ async function chestUnlock() {
     statusMsg.textContent = result.reason === 'already_used'
       ? 'Ten kod został już wykorzystany.'
       : 'Nieprawidłowy kod — sprawdź czy wpisałeś go poprawnie.';
+    return;
+  }
+
+  if (!['c50', 'c100'].includes(result.tier)) {
+    statusMsg.className = 'status-msg err';
+    statusMsg.textContent = 'Ten kod jest do zdrapki, nie do Skrzyni Skarbów — przełącz się na zakładkę „🍀 Zdrapka” u góry strony.';
     return;
   }
 
