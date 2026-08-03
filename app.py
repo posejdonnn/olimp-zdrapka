@@ -19,9 +19,21 @@ TIERS = {
     "t30": {"price": 30},
 }
 
+CHEST_TIERS = {
+    "c50": {"price": 50},
+    "c100": {"price": 100},
+}
+
 NUM_FIELDS = 9
-DEFAULT_JACKPOT_PCT = {"t20": 1.0, "t30": 1.0, "trial": 1.0}
-DEFAULT_PRICES = {"buy": 60.0, "sell": 111.0, "trial_min": 200000.0, "trial_max": 300000.0}
+DEFAULT_JACKPOT_PCT = {
+    "t20": 1.0, "t30": 1.0, "trial": 1.0,
+    "c50": 1.0, "c100": 1.0, "chest_trial": 3.0,
+}
+DEFAULT_PRICES = {
+    "buy": 60.0, "sell": 111.0,
+    "trial_min": 200000.0, "trial_max": 300000.0,
+    "chest_trial_min": 450000.0, "chest_trial_max": 1200000.0,
+}
 
 
 # =========================================================
@@ -100,7 +112,7 @@ def set_jackpot_percent(tier, percent):
 def get_price_settings():
     conn = sqlite3.connect(DB_PATH)
     result = {}
-    for key in ("buy", "sell", "trial_min", "trial_max"):
+    for key in ("buy", "sell", "trial_min", "trial_max", "chest_trial_min", "chest_trial_max"):
         row = conn.execute("SELECT value FROM price_settings WHERE key = ?", (key,)).fetchone()
         if row:
             result[key] = row[0]
@@ -172,6 +184,31 @@ def build_scratch_card(tier: str):
     return fields, is_jackpot, total_lf
 
 
+def build_chest_prize(tier: str):
+    """Skrzynia = JEDNO losowanie (nie suma pól jak w zdrapce). Każda możliwa wygrana,
+    nawet najmniejsza, jest >= gwarantowanemu minimum (cena / kurs SPRZEDAŻY) - dokładnie
+    tyle, ile klient dostałby kupując tę samą kwotę normalnie na tickecie. Jackpot (rzadki,
+    edytowalny %) = cena / kurs SKUPU, czyli zero zysku dla sklepu. Rozkład mocno skoszony
+    w stronę minimum (większość wygranych blisko dolnej granicy), z długim, coraz rzadszym
+    ogonem w stronę jackpota - żadna zwykła wygrana nigdy go nie dotyka ani nie przekracza."""
+    prices = get_price_settings()
+    price = CHEST_TIERS[tier]["price"]
+    jackpot_pct = get_jackpot_percent(tier)
+
+    min_lf = round(price * 1_000_000 / prices["sell"])
+    max_lf = round(price * 1_000_000 / prices["buy"])
+
+    is_jackpot = random.uniform(0, 100) < jackpot_pct
+    if is_jackpot:
+        return max_lf, True
+
+    frac = random.random() ** 4.5  # mocne skoszenie w strone 0 (czyli w strone minimum)
+    lf = min_lf + (max_lf - min_lf) * frac
+    lf = min(int(lf), max_lf - 500)  # NIGDY nie dotyka/przekracza jackpota
+    lf = max(lf, min_lf)
+    return lf, False
+
+
 def generate_code_string():
     chars = string.ascii_uppercase + string.digits
     return "-".join("".join(random.choices(chars, k=4)) for _ in range(2))
@@ -189,10 +226,15 @@ def generate_code():
 
     data = request.get_json(force=True, silent=True) or {}
     tier = data.get("tier")
-    if tier not in TIERS:
-        return jsonify({"error": "invalid tier - use 't20' or 't30'"}), 400
 
-    fields, is_jackpot, total_lf = build_scratch_card(tier)
+    if tier in TIERS:
+        fields, is_jackpot, total_lf = build_scratch_card(tier)
+    elif tier in CHEST_TIERS:
+        lf, is_jackpot = build_chest_prize(tier)
+        fields = [{"amount": lf, "is_jackpot": is_jackpot}]
+        total_lf = lf
+    else:
+        return jsonify({"error": "invalid tier - use 't20', 't30', 'c50' or 'c100'"}), 400
 
     conn = sqlite3.connect(DB_PATH)
     while True:
@@ -222,7 +264,7 @@ def generate_code():
     return jsonify({"code": code, "tier": tier, "total_lf": total_lf, "is_jackpot": is_jackpot})
 
 
-VALID_JACKPOT_TIERS = ("t20", "t30", "trial")
+VALID_JACKPOT_TIERS = ("t20", "t30", "trial", "c50", "c100", "chest_trial")
 
 
 @app.route("/api/settings/jackpot-chance", methods=["GET"])
@@ -287,6 +329,16 @@ def set_prices_endpoint():
             if trial_max <= 0:
                 return jsonify({"error": "trial_max must be > 0"}), 400
             set_price_setting("trial_max", trial_max)
+        if "chest_trial_min" in data:
+            v = float(data["chest_trial_min"])
+            if v <= 0:
+                return jsonify({"error": "chest_trial_min must be > 0"}), 400
+            set_price_setting("chest_trial_min", v)
+        if "chest_trial_max" in data:
+            v = float(data["chest_trial_max"])
+            if v <= 0:
+                return jsonify({"error": "chest_trial_max must be > 0"}), 400
+            set_price_setting("chest_trial_max", v)
     except (TypeError, ValueError):
         return jsonify({"error": "invalid price value"}), 400
 
@@ -344,7 +396,14 @@ def redeem_code():
     conn.close()
 
     total_lf_str = f"{row['total_lf']:,}".replace(",", " ")
-    price_label = "20 zł" if row["tier"] == "t20" else "30 zł"
+
+    game_labels = {
+        "t20": ("20 zł", "zdrapkę", "zdrapał"),
+        "t30": ("30 zł", "zdrapkę", "zdrapał"),
+        "c50": ("50 zł", "skrzynię", "otworzył"),
+        "c100": ("100 zł", "skrzynię", "otworzył"),
+    }
+    price_label, game_noun, game_verb = game_labels.get(row["tier"], ("? zł", "produkt", "wykorzystał"))
 
     if DISCORD_WEBHOOK_URL:
         mention = f"<@{row['buyer_discord_id']}>" if row["buyer_discord_id"] else "Nieznany gracz"
@@ -352,7 +411,7 @@ def redeem_code():
         if row["is_jackpot"]:
             embed = {
                 "title": "🔱 TRAFIONY JACKPOT! 🔱",
-                "description": f"{mention} zdrapał zdrapkę **{price_label}** i trafił jackpota!",
+                "description": f"{mention} {game_verb} {game_noun} **{price_label}** i trafił jackpota!",
                 "color": 0xFFD700,
                 "fields": [
                     {"name": "💰 Łączna wygrana", "value": f"**{total_lf_str} LF**", "inline": True},
@@ -363,8 +422,8 @@ def redeem_code():
             }
         else:
             embed = {
-                "title": "🍀 Ktoś wygrał na zdrapce!",
-                "description": f"{mention} zdrapał zdrapkę **{price_label}** i wygrał łącznie.",
+                "title": "🍀 Ktoś wygrał!",
+                "description": f"{mention} {game_verb} {game_noun} **{price_label}** i wygrał łącznie.",
                 "color": 0xD4AF37,
                 "fields": [
                     {"name": "💰 Wygrana", "value": f"**{total_lf_str} LF**", "inline": True},
@@ -403,18 +462,25 @@ def get_earnings_endpoint():
     rows = conn.execute("SELECT tier, COUNT(*) FROM codes GROUP BY tier").fetchall()
     conn.close()
 
-    counts = {"t20": 0, "t30": 0}
+    counts = {"t20": 0, "t30": 0, "c50": 0, "c100": 0}
     for tier, cnt in rows:
         if tier in counts:
             counts[tier] = cnt
 
-    total = counts["t20"] * TIERS["t20"]["price"] + counts["t30"] * TIERS["t30"]["price"]
+    total = (
+        counts["t20"] * TIERS["t20"]["price"]
+        + counts["t30"] * TIERS["t30"]["price"]
+        + counts["c50"] * CHEST_TIERS["c50"]["price"]
+        + counts["c100"] * CHEST_TIERS["c100"]["price"]
+    )
 
     return jsonify(
         {
             "total_earnings": total,
             "count_t20": counts["t20"],
             "count_t30": counts["t30"],
+            "count_c50": counts["c50"],
+            "count_c100": counts["c100"],
         }
     )
 
